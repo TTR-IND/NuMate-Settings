@@ -1,0 +1,40 @@
+NuMate Settings
+===============
+
+Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+
+Written for the NuMATE desktop project.
+  https://github.com/TTR-IND/NuMATE
+
+Upstream authors whose work this application incorporates or derives from.
+Full detail, including licence terms per component, is in THIRD-PARTY.md.
+
+Wallpaper backend (vendored, mate-control-center)
+  Rodney Dawes <dobey@ximian.com>
+  Novell, Inc.
+  The GNOME Foundation
+
+Appearance and theme handling (mate-control-center)
+  Thomas Wood
+  Jens Granseuer
+
+Screensaver preferences and preview (mate-screensaver)
+  William Jon McCann <mccann@jhu.edu>
+  MATE Developers
+
+Panel layouts (ukui-control-center)
+  Tianjin KYLIN Information Technology Co., Ltd.
+
+Sound backend (libmatemixer)
+  Michal Ratajsky <michal.ratajsky@gmail.com>
+  MATE Developers
+
+Desktop backend (libmate-desktop)
+  Ximian, Inc.
+  MATE Developers
+
+Cursor rendering (libXcursor)
+  Keith Packard
+
+Network backend (NetworkManager / libnm)
+  Red Hat, Inc.

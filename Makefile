@@ -49,22 +49,27 @@ $(PACKAGE): $(OBJS)
 %.o: %.c
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
+# Ships the licence and the attribution file, both of which exist in this
+# repository. An earlier version referenced LICENSE.GPL-2.0 and
+# LICENSE.AGPL-3.0, which do not — so `make install` aborted here even
+# though the compile had succeeded, and the caller reported it as a build
+# failure. Any file named in this target must exist in the tree.
 install: $(PACKAGE)
 	install -Dm755 $(PACKAGE) $(DESTDIR)$(bindir)/$(PACKAGE)
 	install -Dm644 data/style.css $(DESTDIR)$(datadir)/$(PACKAGE)/style.css
 	install -Dm644 data/$(PACKAGE).desktop \
 	  $(DESTDIR)$(datadir)/applications/$(PACKAGE).desktop
-	install -Dm644 LICENSE.GPL-2.0 \
-	  $(DESTDIR)$(datadir)/doc/$(PACKAGE)/LICENSE.GPL-2.0
-	install -Dm644 LICENSE.AGPL-3.0 \
-	  $(DESTDIR)$(datadir)/doc/$(PACKAGE)/LICENSE.AGPL-3.0
+	install -Dm644 LICENSE \
+	  $(DESTDIR)$(datadir)/doc/$(PACKAGE)/LICENSE
+	install -Dm644 THIRD-PARTY.md \
+	  $(DESTDIR)$(datadir)/doc/$(PACKAGE)/THIRD-PARTY.md
 
 uninstall:
 	$(RM) $(DESTDIR)$(bindir)/$(PACKAGE)
 	$(RM) $(DESTDIR)$(datadir)/$(PACKAGE)/style.css
 	$(RM) $(DESTDIR)$(datadir)/applications/$(PACKAGE).desktop
-	$(RM) $(DESTDIR)$(datadir)/doc/$(PACKAGE)/LICENSE.GPL-2.0
-	$(RM) $(DESTDIR)$(datadir)/doc/$(PACKAGE)/LICENSE.AGPL-3.0
+	$(RM) $(DESTDIR)$(datadir)/doc/$(PACKAGE)/LICENSE
+	$(RM) $(DESTDIR)$(datadir)/doc/$(PACKAGE)/THIRD-PARTY.md
 	-rmdir $(DESTDIR)$(datadir)/doc/$(PACKAGE)
 	-rmdir $(DESTDIR)$(datadir)/$(PACKAGE)
 

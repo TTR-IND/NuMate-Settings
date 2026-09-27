@@ -32,7 +32,7 @@ static const struct {
 } BUILTIN_PANELS[] = {
     { "background",  "Background",   "Desktop wallpaper",
       "preferences-desktop-wallpaper",            NULL, "Appearance", 10, cc_background_panel_new },
-    { "themes",      "Themes",       "GTK, icons, cursors, fonts and rendering",
+    { "themes",      "Interface",    "Light or dark appearance, icons, cursors and fonts",
       "preferences-desktop-theme",                NULL, "Appearance", 15, cc_themes_panel_new },
     { "screensaver", "Screen Lock",  "Screen lock and idle timeout",
       "preferences-desktop-screensaver",          NULL, "Appearance", 20, cc_screensaver_panel_new },

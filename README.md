@@ -66,6 +66,14 @@ make install                 # honours DESTDIR and prefix
 make install prefix=/usr/local
 ```
 
+Dev tree (this checkout, no GitHub release):
+
+```sh
+sudo ./install.sh                 # build + install to /usr/local
+PREFIX=$HOME/.local ./install.sh  # user prefix
+sudo ./install.sh --uninstall
+```
+
 Builds clean under `-Wall -Wextra -std=c11` with no warnings.
 
 ## Usage

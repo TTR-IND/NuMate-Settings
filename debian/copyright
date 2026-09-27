@@ -1,0 +1,9 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: NuMate Settings
+Source: https://github.com/TTR-IND/NuMate-Settings
+
+Files: *
+Copyright: 2026 Josh A. Wheatstone and contributors
+License: GPL-2
+ This package is distributed under the GNU General Public License, version 2.
+ The complete text is in /usr/share/common-licenses/GPL-2.

@@ -1,0 +1,11 @@
+Package: numate-settings
+Version: 1.0.0-1
+Architecture: amd64
+Maintainer: GonzOS Packaging <packages@gonzos.invalid>
+Installed-Size: 158
+Depends: libc6 (>= 2.34), libcairo2 (>= 1.2.4), libgdk-pixbuf-2.0-0 (>= 2.22.0), libglib2.0-0t64 (>= 2.80.0), libgtk-3-0t64 (>= 3.13.7), libmate-desktop-2-17t64 (>= 1.6.1), libmatemixer0 (>= 1.10.0), libnm0 (>= 1.0.0), libx11-6, libxml2 (>= 2.7.4), libxrandr2 (>= 2:1.2.99.3), mate-power-manager, network-manager
+Section: x11
+Priority: optional
+Description: unified settings application for the NuMATE desktop
+ NuMate Settings consolidates the MATE settings panels into one GTK
+ application for the NuMATE desktop.

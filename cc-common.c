@@ -2,7 +2,7 @@
 /*
  * cc-common.c — shared UI primitives and GSettings resolution
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 NuMate desktop contributors
  *
  * This program is free software; you can redistribute it and/or modify
@@ -47,6 +47,72 @@ cc_page_add_grid (GtkWidget *page)
     gtk_grid_set_column_spacing (GTK_GRID (grid), CC_GRID_COL_SPACING);
     gtk_box_pack_start (GTK_BOX (page), grid, FALSE, TRUE, 0);
     return grid;
+}
+
+GtkWidget *
+cc_section_card (void)
+{
+    GtkWidget *frame = gtk_frame_new (NULL);
+    gtk_frame_set_shadow_type (GTK_FRAME (frame), GTK_SHADOW_NONE);
+    gtk_style_context_add_class (gtk_widget_get_style_context (frame), "section-card");
+
+    GtkWidget *box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 2);
+    gtk_widget_set_margin_start  (box, 4);
+    gtk_widget_set_margin_end    (box, 4);
+    gtk_widget_set_margin_top    (box, 4);
+    gtk_widget_set_margin_bottom (box, 4);
+    gtk_container_add (GTK_CONTAINER (frame), box);
+
+    /* Store the content box so callers can retrieve it if needed.
+     * Typical use: pack the returned frame into the page, then
+     * gtk_box_pack_* into the child box. */
+    g_object_set_data (G_OBJECT (frame), "cc-content", box);
+    return frame;
+}
+
+GtkWidget *
+cc_section_card_content (GtkWidget *card)
+{
+    return g_object_get_data (G_OBJECT (card), "cc-content");
+}
+
+GtkWidget *
+cc_row_new (const gchar *title, const gchar *subtitle, GtkWidget *control)
+{
+    GtkWidget *row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_widget_set_margin_start  (row, 8);
+    gtk_widget_set_margin_end    (row, 8);
+    gtk_widget_set_margin_top    (row, 10);
+    gtk_widget_set_margin_bottom (row, 10);
+
+    GtkWidget *text = gtk_box_new (GTK_ORIENTATION_VERTICAL, 2);
+    gtk_widget_set_hexpand (text, TRUE);
+    gtk_widget_set_valign (text, GTK_ALIGN_CENTER);
+
+    GtkWidget *title_l = gtk_label_new (title);
+    gtk_label_set_xalign (GTK_LABEL (title_l), 0.0);
+    gtk_label_set_ellipsize (GTK_LABEL (title_l), PANGO_ELLIPSIZE_END);
+    gtk_widget_set_hexpand (title_l, TRUE);
+    gtk_box_pack_start (GTK_BOX (text), title_l, FALSE, FALSE, 0);
+
+    if (subtitle && *subtitle) {
+        GtkWidget *sub = gtk_label_new (subtitle);
+        gtk_label_set_xalign (GTK_LABEL (sub), 0.0);
+        gtk_label_set_ellipsize (GTK_LABEL (sub), PANGO_ELLIPSIZE_END);
+        gtk_style_context_add_class (gtk_widget_get_style_context (sub), "dim-label");
+        gtk_box_pack_start (GTK_BOX (text), sub, FALSE, FALSE, 0);
+    }
+
+    gtk_box_pack_start (GTK_BOX (row), text, TRUE, TRUE, 0);
+
+    if (control) {
+        gtk_widget_set_valign (control, GTK_ALIGN_CENTER);
+        gtk_widget_set_halign (control, GTK_ALIGN_END);
+        gtk_box_pack_start (GTK_BOX (row), control, FALSE, FALSE, 0);
+    }
+
+    gtk_style_context_add_class (gtk_widget_get_style_context (row), "settings-row");
+    return row;
 }
 
 GtkWidget *

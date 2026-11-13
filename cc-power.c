@@ -2,7 +2,7 @@
 /*
  * cc-power.c — Power Management settings panel
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 MATE Developers (capplet code)
  * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd. (layout)
  *
@@ -24,14 +24,14 @@
  * -----------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------
- * MODIFICATIONS (2026), made for J. A. Wheatstone, Torfaen Technology
+ * MODIFICATIONS (2026), made for Josh Wheatstone, TechnyxLabs
  * Research IND. Upstream authorship above is unchanged; these are edits
  * to that work, recorded here so the delta survives outside version
  * control:
  *
  *   - The anonymous typeof(*ctx) binding struct is now a named
  *     SleepBinding.
- *   - make_sleep_combo() builds, seeds and connects the combo in one
+ *   - make_sleep_scale() builds, seeds and connects the combo in one
  *     place.
  * ---------------------------------------------------------------------
  */
@@ -90,48 +90,62 @@ static const struct { const gchar *id; const gchar *label; } BUTTON_ACTIONS[] = 
 
 typedef struct { GSettings *settings; const gchar *key; } SleepBinding;
 
-static void
-on_sleep_changed (GtkComboBox *cb, SleepBinding *binding)
+static gboolean
+on_timer_toggled (GtkSwitch *sw, gboolean state, gpointer user_data G_GNUC_UNUSED)
 {
-    const gchar *id = gtk_combo_box_get_active_id (cb);
-    if (!id) return;
+    GtkWidget *scale = g_object_get_data (G_OBJECT (sw), "scale");
+    GSettings *settings = g_object_get_data (G_OBJECT (sw), "settings");
+    const gchar *key = g_object_get_data (G_OBJECT (sw), "key");
 
-    gint seconds = (gint) g_ascii_strtoll (id, NULL, 10);
+    if (scale) gtk_widget_set_sensitive (scale, state);
+    if (settings && key) {
+        if (!state) {
+            g_settings_set_int (settings, key, 0); /* Never */
+        } else {
+            gint minutes = scale ? (gint) gtk_range_get_value (GTK_RANGE (scale)) : 10;
+            if (minutes < 1) minutes = 10;
+            g_settings_set_int (settings, key, minutes * 60);
+        }
+    }
+    return FALSE;
+}
+
+static void
+on_sleep_scale_changed (GtkRange *range, SleepBinding *binding)
+{
+    gint minutes = (gint) gtk_range_get_value (range);
+    gint seconds = minutes * 60;
     CC_LOG ("%s -> %d s", binding->key, seconds);
     g_settings_set_int (binding->settings, binding->key, seconds);
 }
 
-/*
- * Builds a sleep-timeout combo, seeds it from the key and connects the
- * writer. Four rows needed all three steps; doing them in one place keeps
- * the seed and the writer from drifting apart.
- */
 static GtkWidget *
-make_sleep_combo (GSettings *settings, const gchar *key)
+make_sleep_scale (GSettings *settings, const gchar *key)
 {
-    GtkWidget *combo = gtk_combo_box_text_new ();
-
-    for (gsize i = 0; i < G_N_ELEMENTS (SLEEP_TIMES); i++)
-        gtk_combo_box_text_append (GTK_COMBO_BOX_TEXT (combo),
-                                   SLEEP_TIMES[i].seconds, _(SLEEP_TIMES[i].label));
+    /* 0 = Never, then 1–60 minutes. */
+    GtkWidget *scale = gtk_scale_new_with_range (GTK_ORIENTATION_HORIZONTAL, 0, 60, 1);
+    gtk_scale_set_draw_value (GTK_SCALE (scale), TRUE);
+    gtk_scale_set_value_pos (GTK_SCALE (scale), GTK_POS_RIGHT);
+    gtk_widget_set_hexpand (scale, TRUE);
+    gtk_widget_set_size_request (scale, 180, -1);
 
     if (!settings) {
-        gtk_widget_set_sensitive (combo, FALSE);
-        return combo;
+        gtk_widget_set_sensitive (scale, FALSE);
+        return scale;
     }
 
-    gchar *current = g_strdup_printf ("%d", g_settings_get_int (settings, key));
-    if (!gtk_combo_box_set_active_id (GTK_COMBO_BOX (combo), current))
-        gtk_combo_box_set_active (GTK_COMBO_BOX (combo), 0);
-    g_free (current);
+    gint seconds = g_settings_get_int (settings, key);
+    gint minutes = seconds / 60;
+    if (minutes < 0) minutes = 0;
+    if (minutes > 60) minutes = 60;
+    gtk_range_set_value (GTK_RANGE (scale), minutes);
 
     SleepBinding *binding = g_new0 (SleepBinding, 1);
     binding->settings = settings;
     binding->key      = key;
-
-    g_signal_connect_data (combo, "changed", G_CALLBACK (on_sleep_changed),
+    g_signal_connect_data (scale, "value-changed", G_CALLBACK (on_sleep_scale_changed),
                            binding, cc_closure_free_data, 0);
-    return combo;
+    return scale;
 }
 
 static GtkWidget *
@@ -179,31 +193,103 @@ cc_power_panel_new (void)
     GtkWidget *scroll = cc_page_new (&page);
     g_signal_connect (scroll, "destroy", G_CALLBACK (power_panel_destroyed), d);
 
-    gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("ON AC POWER")),
-                        FALSE, FALSE, 0);
-    GtkGrid *acg = GTK_GRID (cc_page_add_grid (page));
-    cc_grid_attach_row (acg, 0, _("Turn off display after"),
-                        make_sleep_combo (sleep_s, KEY_SLEEP_DISPLAY_AC));
-    cc_grid_attach_row (acg, 1, _("Suspend after"),
-                        make_sleep_combo (sleep_s, KEY_SLEEP_COMPUTER_AC));
+    /* ---- On Mains ------------------------------------------------ */
+    gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("ON MAINS")), FALSE, FALSE, 0);
+    GtkWidget *ac_card = cc_section_card ();
+    GtkWidget *ac_content = cc_section_card_content (ac_card);
 
-    gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("ON BATTERY")),
-                        FALSE, FALSE, 0);
-    GtkGrid *batg = GTK_GRID (cc_page_add_grid (page));
-    cc_grid_attach_row (batg, 0, _("Turn off display after"),
-                        make_sleep_combo (sleep_s, KEY_SLEEP_DISPLAY_BATT));
-    cc_grid_attach_row (batg, 1, _("Suspend after"),
-                        make_sleep_combo (sleep_s, KEY_SLEEP_COMPUTER_BATT));
+    GtkWidget *ac_disp_sw = gtk_switch_new ();
+    gtk_box_pack_start (GTK_BOX (ac_content),
+        cc_row_new (_("Turn off display"), NULL, ac_disp_sw), FALSE, FALSE, 0);
+    GtkWidget *ac_disp_scale = make_sleep_scale (sleep_s, KEY_SLEEP_DISPLAY_AC);
+    gtk_widget_set_margin_start (ac_disp_scale, 24);
+    gtk_widget_set_margin_end (ac_disp_scale, 12);
+    gtk_widget_set_margin_bottom (ac_disp_scale, 8);
+    gtk_box_pack_start (GTK_BOX (ac_content), ac_disp_scale, FALSE, FALSE, 0);
+    {
+        gint s = sleep_s ? g_settings_get_int (sleep_s, KEY_SLEEP_DISPLAY_AC) : 0;
+        gtk_switch_set_active (GTK_SWITCH (ac_disp_sw), s > 0);
+        gtk_widget_set_sensitive (ac_disp_scale, s > 0);
+        g_object_set_data (G_OBJECT (ac_disp_sw), "scale", ac_disp_scale);
+        g_object_set_data (G_OBJECT (ac_disp_sw), "settings", sleep_s);
+        g_object_set_data (G_OBJECT (ac_disp_sw), "key", (gpointer) KEY_SLEEP_DISPLAY_AC);
+        g_signal_connect (ac_disp_sw, "state-set", G_CALLBACK (on_timer_toggled), NULL);
+    }
 
-    gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("BUTTONS")),
-                        FALSE, FALSE, 0);
-    GtkGrid *btng = GTK_GRID (cc_page_add_grid (page));
-    cc_grid_attach_row (btng, 0, _("When power button pressed"),
-                        make_action_combo (d->power_s,
-                            d->is_mate ? KEY_BUTTON_POWER : KEY_GNOME_POWER_BTN));
-    cc_grid_attach_row (btng, 1, _("When lid is closed"),
-                        make_action_combo (d->power_s,
-                            d->is_mate ? KEY_LID_AC : KEY_GNOME_LID));
+    GtkWidget *ac_susp_sw = gtk_switch_new ();
+    gtk_box_pack_start (GTK_BOX (ac_content),
+        cc_row_new (_("Suspend"), NULL, ac_susp_sw), FALSE, FALSE, 0);
+    GtkWidget *ac_susp_scale = make_sleep_scale (sleep_s, KEY_SLEEP_COMPUTER_AC);
+    gtk_widget_set_margin_start (ac_susp_scale, 24);
+    gtk_widget_set_margin_end (ac_susp_scale, 12);
+    gtk_widget_set_margin_bottom (ac_susp_scale, 8);
+    gtk_box_pack_start (GTK_BOX (ac_content), ac_susp_scale, FALSE, FALSE, 0);
+    {
+        gint s = sleep_s ? g_settings_get_int (sleep_s, KEY_SLEEP_COMPUTER_AC) : 0;
+        gtk_switch_set_active (GTK_SWITCH (ac_susp_sw), s > 0);
+        gtk_widget_set_sensitive (ac_susp_scale, s > 0);
+        g_object_set_data (G_OBJECT (ac_susp_sw), "scale", ac_susp_scale);
+        g_object_set_data (G_OBJECT (ac_susp_sw), "settings", sleep_s);
+        g_object_set_data (G_OBJECT (ac_susp_sw), "key", (gpointer) KEY_SLEEP_COMPUTER_AC);
+        g_signal_connect (ac_susp_sw, "state-set", G_CALLBACK (on_timer_toggled), NULL);
+    }
+    gtk_box_pack_start (GTK_BOX (page), ac_card, FALSE, FALSE, 0);
+
+    /* ---- On Battery ---------------------------------------------- */
+    gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("ON BATTERY")), FALSE, FALSE, 0);
+    GtkWidget *bat_card = cc_section_card ();
+    GtkWidget *bat_content = cc_section_card_content (bat_card);
+
+    GtkWidget *bat_disp_sw = gtk_switch_new ();
+    gtk_box_pack_start (GTK_BOX (bat_content),
+        cc_row_new (_("Turn off display"), NULL, bat_disp_sw), FALSE, FALSE, 0);
+    GtkWidget *bat_disp_scale = make_sleep_scale (sleep_s, KEY_SLEEP_DISPLAY_BATT);
+    gtk_widget_set_margin_start (bat_disp_scale, 24);
+    gtk_widget_set_margin_end (bat_disp_scale, 12);
+    gtk_widget_set_margin_bottom (bat_disp_scale, 8);
+    gtk_box_pack_start (GTK_BOX (bat_content), bat_disp_scale, FALSE, FALSE, 0);
+    {
+        gint s = sleep_s ? g_settings_get_int (sleep_s, KEY_SLEEP_DISPLAY_BATT) : 0;
+        gtk_switch_set_active (GTK_SWITCH (bat_disp_sw), s > 0);
+        gtk_widget_set_sensitive (bat_disp_scale, s > 0);
+        g_object_set_data (G_OBJECT (bat_disp_sw), "scale", bat_disp_scale);
+        g_object_set_data (G_OBJECT (bat_disp_sw), "settings", sleep_s);
+        g_object_set_data (G_OBJECT (bat_disp_sw), "key", (gpointer) KEY_SLEEP_DISPLAY_BATT);
+        g_signal_connect (bat_disp_sw, "state-set", G_CALLBACK (on_timer_toggled), NULL);
+    }
+
+    GtkWidget *bat_susp_sw = gtk_switch_new ();
+    gtk_box_pack_start (GTK_BOX (bat_content),
+        cc_row_new (_("Suspend"), NULL, bat_susp_sw), FALSE, FALSE, 0);
+    GtkWidget *bat_susp_scale = make_sleep_scale (sleep_s, KEY_SLEEP_COMPUTER_BATT);
+    gtk_widget_set_margin_start (bat_susp_scale, 24);
+    gtk_widget_set_margin_end (bat_susp_scale, 12);
+    gtk_widget_set_margin_bottom (bat_susp_scale, 8);
+    gtk_box_pack_start (GTK_BOX (bat_content), bat_susp_scale, FALSE, FALSE, 0);
+    {
+        gint s = sleep_s ? g_settings_get_int (sleep_s, KEY_SLEEP_COMPUTER_BATT) : 0;
+        gtk_switch_set_active (GTK_SWITCH (bat_susp_sw), s > 0);
+        gtk_widget_set_sensitive (bat_susp_scale, s > 0);
+        g_object_set_data (G_OBJECT (bat_susp_sw), "scale", bat_susp_scale);
+        g_object_set_data (G_OBJECT (bat_susp_sw), "settings", sleep_s);
+        g_object_set_data (G_OBJECT (bat_susp_sw), "key", (gpointer) KEY_SLEEP_COMPUTER_BATT);
+        g_signal_connect (bat_susp_sw, "state-set", G_CALLBACK (on_timer_toggled), NULL);
+    }
+    gtk_box_pack_start (GTK_BOX (page), bat_card, FALSE, FALSE, 0);
+
+    GtkWidget *btn_card = cc_section_card ();
+    GtkWidget *btn_content = cc_section_card_content (btn_card);
+    gtk_box_pack_start (GTK_BOX (btn_content),
+        cc_row_new (_("Power button"), NULL,
+                    make_action_combo (d->power_s,
+                        d->is_mate ? KEY_BUTTON_POWER : KEY_GNOME_POWER_BTN)),
+        FALSE, FALSE, 0);
+    gtk_box_pack_start (GTK_BOX (btn_content),
+        cc_row_new (_("Lid closed"), NULL,
+                    make_action_combo (d->power_s,
+                        d->is_mate ? KEY_LID_AC : KEY_GNOME_LID)),
+        FALSE, FALSE, 0);
+    gtk_box_pack_start (GTK_BOX (page), btn_card, FALSE, FALSE, 0);
 
     gtk_widget_show_all (scroll);
     return scroll;

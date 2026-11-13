@@ -1,50 +1,149 @@
 /*
- * NuMate Settings — application stylesheet
+ * NuMate Settings — ChromeOS-inspired stylesheet
  *
- * SPDX-License-Identifier: AGPL-3.0-or-later OR GPL-2.0-or-later
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
- * Copyright (C) 2025 NuMate desktop contributors
- *
- * Only the chrome the widget code cannot express is styled here. Panel
- * spacing lives in cc-common.h so that C code and CSS never disagree
- * about the same measurement.
+ * Aggressive overrides so the window is visibly different from stock MATE/GTK.
+ * Dark surface language, rounded selection, clean spacing.
  */
 
-.sidebar {
-    background-color: alpha(@theme_bg_color, 0.6);
+/* Force dark surfaces */
+window,
+window > paned {
+    background-color: #1a1a1a;
+    color: #e8eaed;
 }
 
-.sidebar list row:selected {
-    background-color: @theme_selected_bg_color;
-    color: @theme_selected_fg_color;
+/* Sidebar column */
+.sidebar-column {
+    background-color: #202124;
+    border-right: 1px solid #3c4043;
 }
 
-/* Category headers are inert rows; they must not look clickable. */
+.sidebar-title {
+    font-size: 18px;
+    font-weight: 500;
+    color: #e8eaed;
+}
+
+/* Search in sidebar */
+.search-bar {
+    background-color: #2d2e30;
+    border: none;
+    border-radius: 18px;
+    padding: 4px 12px;
+    min-height: 32px;
+    color: #e8eaed;
+    box-shadow: none;
+}
+
+.search-bar:focus {
+    background-color: #35363a;
+    outline: none;
+}
+
+/* Sidebar icons inherit the foreground so they contrast with the surface. */
+.sidebar image,
+.sidebar-column image {
+    color: inherit;
+}
+
+.sidebar list {
+    background: transparent;
+}
+
+.sidebar list row {
+    margin: 1px 8px;
+    border-radius: 20px;
+    min-height: 36px;
+    padding: 0;
+    background: transparent;
+    border: none;
+}
+
+.sidebar list row:hover {
+    background-color: rgba(232, 234, 237, 0.08);
+}
+
+.sidebar list row:selected,
+.sidebar list row:selected:hover,
+.sidebar list row:selected:focus {
+    background-color: #3c4043;
+    color: #ffffff;
+}
+
+.sidebar list row:selected label,
+.sidebar list row:selected image {
+    color: #ffffff;
+}
+
+/* Category headers — much quieter */
 .category-header {
-    font-size: 80%;
-    font-weight: bold;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    opacity: 0.4;
+    text-transform: uppercase;
+    margin: 12px 20px 2px 20px;
+    color: #9aa0a6;
+}
+
+/* Main content */
+stack,
+scrolledwindow {
+    background-color: #1a1a1a;
+}
+
+.settings-row {
+    min-height: 44px;
+}
+
+.settings-row label {
+    font-size: 14px;
+}
+
+.section-card {
+    background-color: #2d2e30;
+    border-radius: 12px;
+    border: none;
+    margin: 12px 0;
+}
+
+/* Labels and text */
+label {
+    color: #e8eaed;
+}
+
+.dim-label,
+.section-label {
     opacity: 0.55;
+    color: #9aa0a6;
+    font-size: 12px;
+    font-weight: 600;
     letter-spacing: 0.05em;
 }
 
-.title-1 { font-size: 250%; font-weight: 300; }
-.title-2 { font-size: 130%; font-weight: bold; }
-
-
-.appearance-card {
-    background: transparent;
-    border: none;
-    box-shadow: none;
-    padding: 4px 8px 8px;
+/* Controls */
+switch {
+    min-width: 34px;
+    min-height: 18px;
 }
-.appearance-card:hover,
-.appearance-card:active,
-.appearance-card.active {
-    background: transparent;
-    border: none;
-    box-shadow: none;
+
+button {
+    border-radius: 6px;
 }
-.appearance-caption {
-    font-size: 15px;
-    font-weight: 600;
+
+/* Separator / paned */
+paned separator {
+    background-color: #3c4043;
+    min-width: 1px;
+}
+
+/* Scrollbars */
+scrollbar {
+    background: transparent;
+}
+
+scrollbar slider {
+    background-color: rgba(232, 234, 237, 0.18);
+    border-radius: 3px;
+    min-width: 5px;
 }

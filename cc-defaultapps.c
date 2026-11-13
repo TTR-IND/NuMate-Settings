@@ -2,7 +2,7 @@
 /*
  * cc-defaultapps.c — Default Applications settings panel
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 MATE Developers (capplet code)
  * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd. (layout)
  *
@@ -20,7 +20,7 @@
  * -----------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------
- * MODIFICATIONS (2026), made for J. A. Wheatstone, Torfaen Technology
+ * MODIFICATIONS (2026), made for Josh Wheatstone, TechnyxLabs
  * Research IND. Upstream authorship above is unchanged; these are edits
  * to that work, recorded here so the delta survives outside version
  * control:
@@ -134,22 +134,24 @@ cc_defaultapps_panel_new (void)
     GtkWidget *scroll = cc_page_new (&page);
     g_signal_connect (scroll, "destroy", G_CALLBACK (defaultapps_panel_destroyed), d);
 
-    gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("DEFAULT APPLICATIONS")),
-                        FALSE, FALSE, 0);
-    GtkGrid *grid = GTK_GRID (cc_page_add_grid (page));
+    GtkWidget *card = cc_section_card ();
+    GtkWidget *content = cc_section_card_content (card);
 
     for (gsize i = 0; i < G_N_ELEMENTS (APP_ROWS); i++) {
         d->combos[i] = gtk_combo_box_text_new ();
         populate_combo_for_mime (GTK_COMBO_BOX_TEXT (d->combos[i]), APP_ROWS[i].mime);
-
         g_signal_connect (d->combos[i], "changed", G_CALLBACK (on_app_changed),
                           (gpointer) APP_ROWS[i].mime);
-        cc_grid_attach_row (grid, (gint) i, _(APP_ROWS[i].label), d->combos[i]);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_(APP_ROWS[i].label), NULL, d->combos[i]),
+            FALSE, FALSE, 0);
     }
+    gtk_box_pack_start (GTK_BOX (page), card, FALSE, FALSE, 0);
 
     GtkWidget *reset_btn = gtk_button_new_with_label (_("Reload from system"));
     gtk_widget_set_halign (reset_btn, GTK_ALIGN_START);
     gtk_widget_set_margin_top (reset_btn, 16);
+    gtk_widget_set_margin_start (reset_btn, 4);
     g_signal_connect (reset_btn, "clicked", G_CALLBACK (on_reset_clicked), d);
     gtk_box_pack_start (GTK_BOX (page), reset_btn, FALSE, FALSE, 0);
 

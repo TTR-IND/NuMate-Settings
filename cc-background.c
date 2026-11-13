@@ -2,7 +2,7 @@
 /*
  * cc-background.c — Desktop Background settings panel
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 MATE Developers (capplet code)
  * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd. (layout)
  *
@@ -32,7 +32,7 @@
  *   https://github.com/ukui/ukui-control-center
  *
  * ---------------------------------------------------------------------
- * MODIFICATIONS (2026), made for J. A. Wheatstone, Torfaen Technology
+ * MODIFICATIONS (2026), made for Josh Wheatstone, TechnyxLabs
  * Research IND. Upstream authorship above is unchanged; these are edits
  * to that work, recorded here so the delta survives outside version
  * control:
@@ -245,10 +245,10 @@ child_item (GtkWidget *child)
 }
 
 static void
-on_picture_child_activated (GtkFlowBox *fb G_GNUC_UNUSED,
-                            GtkFlowBoxChild *child, BgData *d)
+on_picture_row_activated (GtkListBox *lb G_GNUC_UNUSED,
+                          GtkListBoxRow *row, BgData *d)
 {
-    MateWPItem *item = child_item (GTK_WIDGET (child));
+    MateWPItem *item = g_object_get_data (G_OBJECT (row), "wp-item");
     if (!item) return;
 
     select_item (d, item);
@@ -298,24 +298,9 @@ on_custom_color_set (GtkColorButton *btn, BgData *d)
 /* ------------------------------------------------------------------ */
 
 static void
-on_form_changed (GtkComboBox *cb, BgData *d)
+on_form_changed (GtkComboBox *cb G_GNUC_UNUSED, BgData *d G_GNUC_UNUSED)
 {
-    BgPage page = (BgPage) gtk_combo_box_get_active (cb);
-
-    gtk_stack_set_visible_child_name (GTK_STACK (d->content_stack),
-                                      page == PAGE_COLOR ? "color" : "picture");
-    gtk_widget_set_sensitive (d->add_btn, page == PAGE_PICTURE);
-    gtk_widget_set_sensitive (d->remove_btn,
-        page == PAGE_PICTURE && d->selected &&
-        strcmp (d->selected->filename, NO_PICTURE) != 0);
-
-    if (page == PAGE_COLOR) {
-        gchar *hex = g_settings_get_string (d->ad.wp_settings, WP_PCOLOR_KEY);
-        update_color_preview (d, (hex && *hex) ? hex : "#000000");
-        g_free (hex);
-    } else if (d->selected) {
-        update_picture_preview (d, d->selected);
-    }
+    /* Type selector removed; picture vs color is chosen by what the user clicks. */
 }
 
 /* ------------------------------------------------------------------ */
@@ -325,9 +310,21 @@ on_form_changed (GtkComboBox *cb, BgData *d)
 static void
 insert_item_child (BgData *d, MateWPItem *item)
 {
-    GtkWidget *child = make_wp_child (d, item);
-    gtk_flow_box_insert (GTK_FLOW_BOX (d->picture_flow), child, -1);
-    gtk_widget_show_all (child);
+    GtkWidget *row = gtk_list_box_row_new ();
+    g_object_set_data (G_OBJECT (row), "wp-item", item);
+
+    GtkWidget *label = gtk_label_new (item->name ? item->name :
+                                      g_path_get_basename (item->filename));
+    gtk_label_set_xalign (GTK_LABEL (label), 0.0);
+    gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
+    gtk_widget_set_margin_start (label, 8);
+    gtk_widget_set_margin_end (label, 8);
+    gtk_widget_set_margin_top (label, 4);
+    gtk_widget_set_margin_bottom (label, 4);
+    gtk_container_add (GTK_CONTAINER (row), label);
+
+    gtk_list_box_insert (GTK_LIST_BOX (d->picture_flow), row, -1);
+    gtk_widget_show_all (row);
 }
 
 static void
@@ -458,7 +455,35 @@ load_wallpapers_idle (gpointer user_data)
     d->ad.thumb_height = THUMB_HEIGHT;
 
     mate_wp_xml_load_list (&d->ad);
-    CC_LOG ("loaded %u wallpapers", g_hash_table_size (d->ad.wp_hash));
+    CC_LOG ("loaded %u wallpapers from XML", g_hash_table_size (d->ad.wp_hash));
+
+    /* If the XML list is empty, scan the standard MATE / system backgrounds dirs. */
+    if (g_hash_table_size (d->ad.wp_hash) == 0) {
+        const gchar *dirs[] = {
+            "/usr/share/backgrounds",
+            "/usr/share/mate-background-properties",
+            "/usr/share/pixmaps/backgrounds",
+            NULL
+        };
+        for (int i = 0; dirs[i]; i++) {
+            GDir *dir = g_dir_open (dirs[i], 0, NULL);
+            if (!dir) continue;
+            const gchar *name;
+            while ((name = g_dir_read_name (dir))) {
+                if (!g_str_has_suffix (name, ".png") &&
+                    !g_str_has_suffix (name, ".jpg") &&
+                    !g_str_has_suffix (name, ".jpeg") &&
+                    !g_str_has_suffix (name, ".webp"))
+                    continue;
+                gchar *path = g_build_filename (dirs[i], name, NULL);
+                if (!g_hash_table_lookup (d->ad.wp_hash, path))
+                    mate_wp_item_new (path, d->ad.wp_hash, d->ad.thumb_factory);
+                g_free (path);
+            }
+            g_dir_close (dir);
+        }
+        CC_LOG ("after directory scan: %u wallpapers", g_hash_table_size (d->ad.wp_hash));
+    }
 
     GHashTableIter it;
     gpointer key, value;
@@ -469,7 +494,23 @@ load_wallpapers_idle (gpointer user_data)
             insert_item_child (d, item);
     }
 
-    gchar *current = g_settings_get_string (d->ad.wp_settings, WP_FILE_KEY);
+    gchar *current = NULL;
+    GSettingsSchema *sch = NULL;
+    g_object_get (d->ad.wp_settings, "settings-schema", &sch, NULL);
+    if (sch) {
+        if (g_settings_schema_has_key (sch, "picture-filename"))
+            current = g_settings_get_string (d->ad.wp_settings, "picture-filename");
+        if ((!current || !*current) && g_settings_schema_has_key (sch, "picture-uri")) {
+            g_free (current);
+            current = g_settings_get_string (d->ad.wp_settings, "picture-uri");
+            if (current && g_str_has_prefix (current, "file://")) {
+                gchar *path = g_filename_from_uri (current, NULL, NULL);
+                g_free (current);
+                current = path;
+            }
+        }
+        g_settings_schema_unref (sch);
+    }
     if (current && *current) {
         MateWPItem *item = g_hash_table_lookup (d->ad.wp_hash, current);
         if (item) select_item (d, item);
@@ -491,7 +532,17 @@ cc_background_panel_new (void)
     BgData *d  = g_new0 (BgData, 1);
     d->loading = TRUE;
 
-    d->ad.wp_settings   = g_settings_new (WP_SCHEMA);
+    /* Prefer MATE, then GNOME, then Nemo so nemo-desktop on MATE works. */
+    const gchar *schemas[] = {
+        "org.mate.background",
+        "org.gnome.desktop.background",
+        "org.nemo.desktop",
+        NULL
+    };
+    const gchar *schema = NULL;
+    d->ad.wp_settings = cc_settings_resolve (schemas, &schema);
+    if (!d->ad.wp_settings)
+        d->ad.wp_settings = g_settings_new (WP_SCHEMA);
     d->ad.wp_hash       = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
                                                  (GDestroyNotify) mate_wp_item_free);
     d->ad.thumb_factory = mate_desktop_thumbnail_factory_new (
@@ -499,14 +550,10 @@ cc_background_panel_new (void)
 
     GtkWidget *page;
     GtkWidget *scroll = cc_page_new (&page);
-    g_signal_connect (scroll, "destroy", G_CALLBACK (bg_panel_destroyed), d);
+    g_signal_connect (page, "destroy", G_CALLBACK (bg_panel_destroyed), d);
 
-    GtkWidget *title = gtk_label_new (NULL);
-    gtk_label_set_markup (GTK_LABEL (title),
-        "<span weight=\"bold\" size=\"large\">Desktop Background</span>");
-    gtk_widget_set_halign (title, GTK_ALIGN_START);
-    gtk_widget_set_margin_bottom (title, 12);
-    gtk_box_pack_start (GTK_BOX (page), title, FALSE, FALSE, 0);
+    gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("DESKTOP BACKGROUND")),
+                        FALSE, FALSE, 0);
 
     /* Preview */
     d->preview_stack = gtk_stack_new ();
@@ -523,20 +570,28 @@ cc_background_panel_new (void)
     gtk_widget_set_size_request (d->preview_color_box, PREVIEW_WIDTH, PREVIEW_HEIGHT);
     gtk_stack_add_named (GTK_STACK (d->preview_stack), d->preview_color_box, "color");
 
-    GtkWidget *preview_hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_box_pack_start (GTK_BOX (preview_hbox), d->preview_stack, FALSE, FALSE, 0);
-    gtk_widget_set_margin_bottom (preview_hbox, 16);
-    gtk_box_pack_start (GTK_BOX (page), preview_hbox, FALSE, FALSE, 0);
+    /* List (left) + preview (right), same pattern as Screen Lock. */
+    GtkWidget *main_hbox = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_box_pack_start (GTK_BOX (page), main_hbox, TRUE, TRUE, 0);
+
+    GtkWidget *list_sw = gtk_scrolled_window_new (NULL, NULL);
+    gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (list_sw),
+                                    GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+    gtk_widget_set_size_request (list_sw, 220, 280);
+    d->picture_flow = gtk_list_box_new (); /* reuse field as list */
+    gtk_list_box_set_selection_mode (GTK_LIST_BOX (d->picture_flow), GTK_SELECTION_SINGLE);
+    gtk_container_add (GTK_CONTAINER (list_sw), d->picture_flow);
+    gtk_box_pack_start (GTK_BOX (main_hbox), list_sw, FALSE, TRUE, 0);
+
+    GtkWidget *preview_frame = gtk_frame_new (NULL);
+    gtk_widget_set_size_request (preview_frame, 320, 180);
+    gtk_container_add (GTK_CONTAINER (preview_frame), d->preview_stack);
+    gtk_box_pack_start (GTK_BOX (main_hbox), preview_frame, TRUE, TRUE, 0);
 
     /* Options */
     GtkGrid *opt_grid = GTK_GRID (cc_page_add_grid (page));
+    gtk_widget_set_margin_top (GTK_WIDGET (opt_grid), 16);
     gtk_widget_set_margin_bottom (GTK_WIDGET (opt_grid), 8);
-
-    d->form_combo = gtk_combo_box_text_new ();
-    gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (d->form_combo), _("Picture"));
-    gtk_combo_box_text_append_text (GTK_COMBO_BOX_TEXT (d->form_combo), _("Color"));
-    gtk_combo_box_set_active (GTK_COMBO_BOX (d->form_combo), PAGE_PICTURE);
-    cc_grid_attach_row (opt_grid, 0, _("Type:"), d->form_combo);
 
     d->options_combo = gtk_combo_box_text_new ();
     for (gsize i = 0; i < G_N_ELEMENTS (PLACEMENTS); i++) {
@@ -546,31 +601,11 @@ cc_background_panel_new (void)
         g_free (id);
     }
     gtk_combo_box_set_active (GTK_COMBO_BOX (d->options_combo), 0);
-    cc_grid_attach_row (opt_grid, 1, _("Placement:"), d->options_combo);
+    cc_grid_attach_row (opt_grid, 0, _("Placement:"), d->options_combo);
 
-    /* Content stack */
-    d->content_stack = gtk_stack_new ();
-    gtk_stack_set_transition_type (GTK_STACK (d->content_stack),
-                                   GTK_STACK_TRANSITION_TYPE_CROSSFADE);
-    gtk_box_pack_start (GTK_BOX (page), d->content_stack, TRUE, TRUE, 0);
-
-    GtkWidget *pic_scroll = gtk_scrolled_window_new (NULL, NULL);
-    gtk_scrolled_window_set_policy (GTK_SCROLLED_WINDOW (pic_scroll),
-                                    GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_widget_set_size_request (pic_scroll, -1, 300);
-    d->picture_flow = gtk_flow_box_new ();
-    gtk_flow_box_set_homogeneous           (GTK_FLOW_BOX (d->picture_flow), TRUE);
-    gtk_flow_box_set_min_children_per_line (GTK_FLOW_BOX (d->picture_flow), 2);
-    gtk_flow_box_set_max_children_per_line (GTK_FLOW_BOX (d->picture_flow), 6);
-    gtk_flow_box_set_selection_mode        (GTK_FLOW_BOX (d->picture_flow), GTK_SELECTION_SINGLE);
-    gtk_flow_box_set_row_spacing           (GTK_FLOW_BOX (d->picture_flow), 6);
-    gtk_flow_box_set_column_spacing        (GTK_FLOW_BOX (d->picture_flow), 6);
-    gtk_container_add (GTK_CONTAINER (pic_scroll), d->picture_flow);
-    gtk_stack_add_named (GTK_STACK (d->content_stack), pic_scroll, "picture");
-
-    /* Colour page */
+    /* Colour grid is always visible below the list + preview. */
     GtkWidget *color_page = gtk_box_new (GTK_ORIENTATION_VERTICAL, 8);
-    gtk_widget_set_margin_top (color_page, 8);
+    gtk_widget_set_margin_top (color_page, 12);
     d->color_flow = gtk_flow_box_new ();
     gtk_flow_box_set_selection_mode (GTK_FLOW_BOX (d->color_flow), GTK_SELECTION_NONE);
     gtk_flow_box_set_row_spacing    (GTK_FLOW_BOX (d->color_flow), 6);
@@ -607,7 +642,7 @@ cc_background_panel_new (void)
                         FALSE, FALSE, 0);
     gtk_box_pack_start (GTK_BOX (custom_row), d->custom_color_btn, FALSE, FALSE, 0);
     gtk_box_pack_start (GTK_BOX (color_page), custom_row, FALSE, FALSE, 0);
-    gtk_stack_add_named (GTK_STACK (d->content_stack), color_page, "color");
+    gtk_box_pack_start (GTK_BOX (page), color_page, FALSE, FALSE, 0);
 
     /* Buttons */
     GtkWidget *btn_box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 8);
@@ -619,9 +654,8 @@ cc_background_panel_new (void)
     gtk_box_pack_start (GTK_BOX (btn_box), d->remove_btn, FALSE, FALSE, 0);
     gtk_box_pack_start (GTK_BOX (page), btn_box, FALSE, FALSE, 0);
 
-    g_signal_connect (d->form_combo,       "changed",         G_CALLBACK (on_form_changed),            d);
     g_signal_connect (d->options_combo,    "changed",         G_CALLBACK (on_options_changed),         d);
-    g_signal_connect (d->picture_flow,     "child-activated", G_CALLBACK (on_picture_child_activated), d);
+    g_signal_connect (d->picture_flow,     "row-activated", G_CALLBACK (on_picture_row_activated), d);
     g_signal_connect (d->add_btn,          "clicked",         G_CALLBACK (on_add_clicked),             d);
     g_signal_connect (d->remove_btn,       "clicked",         G_CALLBACK (on_remove_clicked),          d);
     g_signal_connect (d->custom_color_btn, "color-set",       G_CALLBACK (on_custom_color_set),        d);

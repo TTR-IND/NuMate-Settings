@@ -2,7 +2,7 @@
 /*
  * cc-mouse.c — Mouse & Touchpad settings panel
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 MATE Developers (capplet code)
  * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd. (layout)
  *
@@ -28,7 +28,7 @@
  * -----------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------
- * MODIFICATIONS (2026), made for J. A. Wheatstone, Torfaen Technology
+ * MODIFICATIONS (2026), made for Josh Wheatstone, TechnyxLabs
  * Research IND. Upstream authorship above is unchanged; these are edits
  * to that work, recorded here so the delta survives outside version
  * control:
@@ -98,48 +98,70 @@ cc_mouse_panel_new (void)
     g_signal_connect (scroll, "destroy", G_CALLBACK (mouse_panel_destroyed), d);
 
     if (d->mouse_s) {
-        gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("MOUSE")), FALSE, FALSE, 0);
-        GtkGrid *mg = GTK_GRID (cc_page_add_grid (page));
+        GtkWidget *card = cc_section_card ();
+        GtkWidget *content = cc_section_card_content (card);
 
-        cc_grid_attach_row (mg, 0, _("Left-handed"),
-                            cc_settings_switch (d->mouse_s, KEY_LEFT_HANDED));
-        cc_grid_attach_row (mg, 1, _("Middle click emulation"),
-                            cc_settings_switch (d->mouse_s, KEY_MIDDLE_CLICK));
-        cc_grid_attach_row (mg, 2, _("Natural scrolling"),
-                            cc_settings_switch (d->mouse_s, KEY_NATURAL_SCROLL));
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Left-handed"), NULL,
+                        cc_settings_switch (d->mouse_s, KEY_LEFT_HANDED)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Middle click emulation"), NULL,
+                        cc_settings_switch (d->mouse_s, KEY_MIDDLE_CLICK)),
+            FALSE, FALSE, 0);
 
-        cc_grid_attach_bound_scale (mg, 3, _("Pointer speed"), d->mouse_s, KEY_SPEED,
+        GtkWidget *grid = gtk_grid_new ();
+        gtk_grid_set_row_spacing (GTK_GRID (grid), 8);
+        gtk_grid_set_column_spacing (GTK_GRID (grid), 12);
+        gtk_widget_set_margin_start (grid, 8);
+        gtk_widget_set_margin_end (grid, 8);
+        gtk_widget_set_margin_bottom (grid, 8);
+        cc_grid_attach_bound_scale (GTK_GRID (grid), 0, _("Pointer speed"), d->mouse_s, KEY_SPEED,
                          -1.0, 1.0, 0.05, _("Slow"), _("Fast"));
-        cc_grid_attach_bound_scale (mg, 4, _("Double-click speed"), d->mouse_s, KEY_DOUBLE_CLICK,
+        cc_grid_attach_bound_scale (GTK_GRID (grid), 1, _("Double-click speed"), d->mouse_s, KEY_DOUBLE_CLICK,
                          100, 1000, 50, _("Fast"), _("Slow"));
+        gtk_box_pack_start (GTK_BOX (content), grid, FALSE, FALSE, 0);
+
+        gtk_box_pack_start (GTK_BOX (page), card, FALSE, FALSE, 0);
     }
 
     if (d->touchpad_s) {
-        gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("TOUCHPAD")), FALSE, FALSE, 0);
-        GtkGrid *tg = GTK_GRID (cc_page_add_grid (page));
+        GtkWidget *card = cc_section_card ();
+        GtkWidget *content = cc_section_card_content (card);
 
         GtkWidget *tp_enabled = gtk_switch_new ();
-        gtk_widget_set_halign (tp_enabled, GTK_ALIGN_START);
-
         gchar *send_events = g_settings_get_string (d->touchpad_s, KEY_TP_SEND_EVENTS);
         gtk_switch_set_active (GTK_SWITCH (tp_enabled),
                                g_strcmp0 (send_events, "enabled") == 0);
         g_free (send_events);
-
         g_signal_connect (tp_enabled, "state-set",
                           G_CALLBACK (on_touchpad_enabled_toggled), d->touchpad_s);
-        cc_grid_attach_row (tg, 0, _("Enable touchpad"), tp_enabled);
 
-        cc_grid_attach_row (tg, 1, _("Tap to click"),
-                            cc_settings_switch (d->touchpad_s, KEY_TP_TAP_CLICK));
-        cc_grid_attach_row (tg, 2, _("Natural scrolling"),
-                            cc_settings_switch (d->touchpad_s, KEY_TP_NATURAL_SCROLL));
-        cc_grid_attach_row (tg, 3, _("Disable while typing"),
-                            cc_settings_switch (d->touchpad_s, KEY_TP_DISABLE_WHILE_TYPING));
-        cc_grid_attach_row (tg, 4, _("Two-finger scrolling"),
-                            cc_settings_switch (d->touchpad_s, KEY_TP_TWO_FINGER));
-        cc_grid_attach_row (tg, 5, _("Edge scrolling"),
-                            cc_settings_switch (d->touchpad_s, KEY_TP_EDGE_SCROLL));
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Enable touchpad"), NULL, tp_enabled),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Tap to click"), NULL,
+                        cc_settings_switch (d->touchpad_s, KEY_TP_TAP_CLICK)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Natural scrolling"), NULL,
+                        cc_settings_switch (d->touchpad_s, KEY_TP_NATURAL_SCROLL)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Disable while typing"), NULL,
+                        cc_settings_switch (d->touchpad_s, KEY_TP_DISABLE_WHILE_TYPING)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Two-finger scrolling"), NULL,
+                        cc_settings_switch (d->touchpad_s, KEY_TP_TWO_FINGER)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Edge scrolling"), NULL,
+                        cc_settings_switch (d->touchpad_s, KEY_TP_EDGE_SCROLL)),
+            FALSE, FALSE, 0);
+
+        gtk_box_pack_start (GTK_BOX (page), card, FALSE, FALSE, 0);
     }
 
     gtk_widget_show_all (scroll);

@@ -2,7 +2,7 @@
 /*
  * cc-window.h — main settings window
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 NuMate desktop contributors
  *
  * This program is free software; you can redistribute it and/or modify

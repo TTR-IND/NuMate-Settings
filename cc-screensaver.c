@@ -2,7 +2,7 @@
 /*
  * cc-screensaver.c — Screen Lock & Screensaver settings panel
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 MATE Developers (capplet code)
  * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd. (layout)
  *
@@ -21,7 +21,7 @@
  * -----------------------------------------------------------------------
  *
  * ---------------------------------------------------------------------
- * MODIFICATIONS (2026), made for J. A. Wheatstone, Torfaen Technology
+ * MODIFICATIONS (2026), made for Josh Wheatstone, TechnyxLabs
  * Research IND. Upstream authorship above is unchanged; these are edits
  * to that work, recorded here so the delta survives outside version
  * control:

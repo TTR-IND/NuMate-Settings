@@ -2,7 +2,7 @@
 /*
  * cc-common.h — shared UI primitives and GSettings resolution
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 NuMate desktop contributors
  *
  * This program is free software; you can redistribute it and/or modify
@@ -37,11 +37,11 @@
 
 /* Single definition of the panel chrome metrics. Every panel references
  * these; there is no second copy anywhere in the tree. */
-#define CC_PAGE_MARGIN_H   24
-#define CC_PAGE_MARGIN_TOP 12
-#define CC_PAGE_MARGIN_BOT 24
-#define CC_GRID_ROW_SPACING 8
-#define CC_GRID_COL_SPACING 10
+#define CC_PAGE_MARGIN_H   28
+#define CC_PAGE_MARGIN_TOP 8
+#define CC_PAGE_MARGIN_BOT 28
+#define CC_GRID_ROW_SPACING 6
+#define CC_GRID_COL_SPACING 12
 
 /* Root scroller + content box used by every panel. Returns the scroller;
  * *content_out receives the vertical box callers pack into. */
@@ -50,7 +50,12 @@ GtkWidget *cc_page_new (GtkWidget **content_out);
 /* A grid pre-configured with the standard spacing, packed into `page`. */
 GtkWidget *cc_page_add_grid (GtkWidget *page);
 
+GtkWidget *cc_section_card (void);
+GtkWidget *cc_section_card_content (GtkWidget *card);
 GtkWidget *cc_section_label (const gchar *text);
+
+/* ChromeOS/Apple-style settings row: title (+ optional subtitle) left, control right. */
+GtkWidget *cc_row_new (const gchar *title, const gchar *subtitle, GtkWidget *control);
 
 /* Attach `widget` at `row` with a right-aligned caption in column 0. */
 void cc_grid_attach_row (GtkGrid *grid, gint row,

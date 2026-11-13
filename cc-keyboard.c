@@ -2,7 +2,7 @@
 /*
  * cc-keyboard.c — Keyboard settings panel
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 MATE Developers (capplet code)
  * Copyright (C) 2019 Tianjin KYLIN Information Technology Co., Ltd. (layout)
  *
@@ -28,7 +28,7 @@
  *   https://github.com/ukui/ukui-control-center
  *
  * ---------------------------------------------------------------------
- * MODIFICATIONS (2026), made for J. A. Wheatstone, Torfaen Technology
+ * MODIFICATIONS (2026), made for Josh Wheatstone, TechnyxLabs
  * Research IND. Upstream authorship above is unchanged; these are edits
  * to that work, recorded here so the delta survives outside version
  * control:
@@ -101,50 +101,60 @@ cc_keyboard_panel_new (void)
 
     /* ---- Key repeat ---------------------------------------------- */
     if (d->kb_s) {
-        gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("KEY REPEAT")),
-                            FALSE, FALSE, 0);
-        GtkGrid *rg = GTK_GRID (cc_page_add_grid (page));
+        GtkWidget *card = cc_section_card ();
+        GtkWidget *content = cc_section_card_content (card);
 
         GtkWidget *repeat_sw = cc_settings_switch (d->kb_s, KEY_REPEAT);
-        cc_grid_attach_row (rg, 0, _("Key repeat"), repeat_sw);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Key repeat"), NULL, repeat_sw),
+            FALSE, FALSE, 0);
 
-        d->repeat_grid = cc_page_add_grid (page);
-        gtk_widget_set_margin_start (d->repeat_grid, 12);
+        GtkWidget *scales = gtk_box_new (GTK_ORIENTATION_VERTICAL, 4);
+        gtk_widget_set_margin_start (scales, 24);
+        gtk_widget_set_margin_end (scales, 12);
+        gtk_widget_set_margin_bottom (scales, 8);
 
-        cc_grid_attach_bound_scale (GTK_GRID (d->repeat_grid), 0, _("Repeat delay"),
-                         d->kb_s, KEY_DELAY, 100, 2000, 10, _("Short"), _("Long"));
-        cc_grid_attach_bound_scale (GTK_GRID (d->repeat_grid), 1, _("Repeat interval"),
-                         d->kb_s, KEY_REPEAT_INTERVAL, 10, 100, 1, _("Short"), _("Long"));
+        GtkWidget *delay_scale = cc_marked_scale (100, 2000, 10, _("Short"), _("Long"));
+        g_settings_bind (d->kb_s, KEY_DELAY, delay_scale, "value", G_SETTINGS_BIND_DEFAULT);
+        gtk_box_pack_start (GTK_BOX (scales), delay_scale, FALSE, FALSE, 0);
 
-        gtk_widget_set_sensitive (d->repeat_grid,
-                                  g_settings_get_boolean (d->kb_s, KEY_REPEAT));
+        GtkWidget *interval_scale = cc_marked_scale (10, 100, 1, _("Short"), _("Long"));
+        g_settings_bind (d->kb_s, KEY_REPEAT_INTERVAL, interval_scale, "value", G_SETTINGS_BIND_DEFAULT);
+        gtk_box_pack_start (GTK_BOX (scales), interval_scale, FALSE, FALSE, 0);
+
+        gtk_box_pack_start (GTK_BOX (content), scales, FALSE, FALSE, 0);
+
+        d->repeat_grid = scales;
+        gtk_widget_set_sensitive (scales, g_settings_get_boolean (d->kb_s, KEY_REPEAT));
         g_signal_connect (repeat_sw, "state-set", G_CALLBACK (on_repeat_toggled), d);
+
+        gtk_box_pack_start (GTK_BOX (page), card, FALSE, FALSE, 0);
     }
 
     /* ---- Accessibility ------------------------------------------- */
     if (d->a11y_s) {
-        gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("ACCESSIBILITY")),
-                            FALSE, FALSE, 0);
-        GtkGrid *ag = GTK_GRID (cc_page_add_grid (page));
-        gint row = 0;
+        GtkWidget *card = cc_section_card ();
+        GtkWidget *content = cc_section_card_content (card);
 
-        cc_grid_attach_row (ag, row++, _("Sticky keys"),
-                            cc_settings_switch (d->a11y_s, KEY_STICKY));
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Sticky keys"), NULL, cc_settings_switch (d->a11y_s, KEY_STICKY)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Slow keys"), NULL, cc_settings_switch (d->a11y_s, KEY_SLOW)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Bounce keys"), NULL, cc_settings_switch (d->a11y_s, KEY_BOUNCE)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Mouse keys"), NULL,
+                        cc_settings_switch (d->a11y_s, KEY_MOUSEKEYS)),
+            FALSE, FALSE, 0);
+        gtk_box_pack_start (GTK_BOX (content),
+            cc_row_new (_("Toggle keys"), NULL,
+                        cc_settings_switch (d->a11y_s, KEY_TOGGLEKEYS)),
+            FALSE, FALSE, 0);
 
-        cc_grid_attach_row (ag, row++, _("Slow keys"),
-                            cc_settings_switch (d->a11y_s, KEY_SLOW));
-        cc_grid_attach_bound_scale (ag, row++, _("Slow keys delay"),
-                         d->a11y_s, KEY_SLOW_DELAY, 0, 500, 10, _("Short"), _("Long"));
-
-        cc_grid_attach_row (ag, row++, _("Bounce keys"),
-                            cc_settings_switch (d->a11y_s, KEY_BOUNCE));
-        cc_grid_attach_bound_scale (ag, row++, _("Bounce keys delay"),
-                         d->a11y_s, KEY_BOUNCE_DELAY, 0, 500, 10, _("Short"), _("Long"));
-
-        cc_grid_attach_row (ag, row++, _("Mouse keys (numpad)"),
-                            cc_settings_switch (d->a11y_s, KEY_MOUSEKEYS));
-        cc_grid_attach_row (ag, row++, _("Toggle keys (Caps/Num sound)"),
-                            cc_settings_switch (d->a11y_s, KEY_TOGGLEKEYS));
+        gtk_box_pack_start (GTK_BOX (page), card, FALSE, FALSE, 0);
     }
 
     gtk_widget_show_all (scroll);

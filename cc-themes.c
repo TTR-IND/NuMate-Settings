@@ -2,7 +2,7 @@
 /*
  * cc-themes.c — Interface panel (appearance mode, icons, cursors, fonts)
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  *
  * Light / Dark only writes gtk-theme (Fluent-grey-Light / Fluent-grey-Dark).
  * Icon pack, cursor and marco theme are left alone.
@@ -307,7 +307,8 @@ make_appearance_card (ThemesData *d, const gchar *title, gboolean light)
     GtkWidget *preview = gtk_drawing_area_new ();
     GtkWidget *label = gtk_label_new (title);
 
-    gtk_widget_set_size_request (preview, 176, 118);
+    gtk_widget_set_size_request (btn, 180, 160);
+    gtk_widget_set_size_request (preview, 160, 100);
     g_signal_connect (preview, "draw", G_CALLBACK (on_preview_draw),
                       GINT_TO_POINTER (light));
     if (light)
@@ -470,6 +471,21 @@ cc_themes_panel_new (void)
     scroll = cc_page_new (&page);
     g_signal_connect (scroll, "destroy", G_CALLBACK (themes_panel_destroyed), d);
 
+    /* Embed the Background panel content at the top. */
+    {
+        GtkWidget *bg = cc_background_panel_new ();
+        GtkWidget *viewport = gtk_bin_get_child (GTK_BIN (bg));
+        GtkWidget *bg_child = viewport ? gtk_bin_get_child (GTK_BIN (viewport)) : NULL;
+        if (bg_child) {
+            g_object_ref (bg_child);
+            gtk_container_remove (GTK_CONTAINER (viewport), bg_child);
+            gtk_box_pack_start (GTK_BOX (page), bg_child, FALSE, FALSE, 0);
+            gtk_box_reorder_child (GTK_BOX (page), bg_child, 0);
+            g_object_unref (bg_child);
+        }
+        gtk_widget_destroy (bg);
+    }
+
     gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("APPEARANCE")), FALSE, FALSE, 0);
     row = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 16);
     gtk_widget_set_halign (row, GTK_ALIGN_START);
@@ -513,10 +529,10 @@ cc_themes_panel_new (void)
     }
 
     if (d->theme_s || d->wm_s) {
+        gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("FONTS")), FALSE, FALSE, 0);
         GtkGrid *fg = GTK_GRID (cc_page_add_grid (page));
         gint rowi = 0;
 
-        gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("FONTS")), FALSE, FALSE, 0);
         if (d->theme_s) {
             d->ui_font_btn = make_font_button (d->theme_s, KEY_FONT);
             cc_grid_attach_row (fg, rowi++, _("Interface"), d->ui_font_btn);
@@ -525,52 +541,29 @@ cc_themes_panel_new (void)
             d->mono_font_btn = make_font_button (d->theme_s, KEY_MONO_FONT);
             cc_grid_attach_row (fg, rowi++, _("Monospace"), d->mono_font_btn);
         }
+        /* Titlebar always follows the interface font. */
         if (d->wm_s) {
-            gboolean sys = g_settings_get_boolean (d->wm_s, KEY_TITLEBAR_SYS);
-
-            d->title_system_sw = gtk_switch_new ();
-            gtk_switch_set_active (GTK_SWITCH (d->title_system_sw), sys);
-            g_signal_connect (d->title_system_sw, "state-set",
-                              G_CALLBACK (on_title_system_toggled), d);
-            cc_grid_attach_row (fg, rowi++, _("Titlebar uses interface font"),
-                                d->title_system_sw);
-            d->title_font_btn = make_font_button (d->wm_s, KEY_TITLEBAR_FONT);
-            gtk_widget_set_sensitive (d->title_font_btn, !sys);
-            cc_grid_attach_row (fg, rowi++, _("Titlebar"), d->title_font_btn);
+            GSettingsSchema *sch = NULL;
+            g_object_get (d->wm_s, "settings-schema", &sch, NULL);
+            if (sch && g_settings_schema_has_key (sch, "titlebar-uses-system-font"))
+                g_settings_set_boolean (d->wm_s, "titlebar-uses-system-font", TRUE);
+            if (sch) g_settings_schema_unref (sch);
         }
     }
 
+    /* Antialiasing is always subpixel; hinting and subpixel order are fixed. */
     if (d->iface_s) {
-        static const gchar *aa_ids[] = { "none", "grayscale", "rgba", NULL };
-        static const gchar *aa_labels[] = { "None", "Grayscale", "Subpixel", NULL };
-        static const gchar *hint_ids[] = { "none", "slight", "medium", "full", NULL };
-        static const gchar *hint_labels[] = { "None", "Slight", "Medium", "Full", NULL };
-        static const gchar *rgba_ids[] = { "rgb", "bgr", "vrgb", "vbgr", NULL };
-        static const gchar *rgba_labels[] = { "RGB", "BGR", "VRGB", "VBGR", NULL };
-        GtkGrid *rg = GTK_GRID (cc_page_add_grid (page));
-        gchar *aa, *hint, *rgba;
-
-        gtk_box_pack_start (GTK_BOX (page), cc_section_label (_("RENDERING")), FALSE, FALSE, 0);
-        d->aa_combo = make_id_combo (aa_ids, aa_labels);
-        d->hint_combo = make_id_combo (hint_ids, hint_labels);
-        d->rgba_combo = make_id_combo (rgba_ids, rgba_labels);
-        cc_grid_attach_row (rg, 0, _("Antialiasing"), d->aa_combo);
-        cc_grid_attach_row (rg, 1, _("Hinting"), d->hint_combo);
-        cc_grid_attach_row (rg, 2, _("Subpixel order"), d->rgba_combo);
-        d->updating = TRUE;
-        aa = g_settings_get_string (d->iface_s, KEY_ANTIALIASING);
-        hint = g_settings_get_string (d->iface_s, KEY_HINTING);
-        rgba = g_settings_get_string (d->iface_s, KEY_RGBA_ORDER);
-        gtk_combo_box_set_active_id (GTK_COMBO_BOX (d->aa_combo), aa);
-        gtk_combo_box_set_active_id (GTK_COMBO_BOX (d->hint_combo), hint);
-        gtk_combo_box_set_active_id (GTK_COMBO_BOX (d->rgba_combo), rgba);
-        g_free (aa);
-        g_free (hint);
-        g_free (rgba);
-        d->updating = FALSE;
-        connect_render_combo (d, d->aa_combo, KEY_ANTIALIASING);
-        connect_render_combo (d, d->hint_combo, KEY_HINTING);
-        connect_render_combo (d, d->rgba_combo, KEY_RGBA_ORDER);
+        GSettingsSchema *sch = NULL;
+        g_object_get (d->iface_s, "settings-schema", &sch, NULL);
+        if (sch) {
+            if (g_settings_schema_has_key (sch, "font-antialiasing"))
+                g_settings_set_string (d->iface_s, "font-antialiasing", "rgba");
+            if (g_settings_schema_has_key (sch, "font-hinting"))
+                g_settings_set_string (d->iface_s, "font-hinting", "slight");
+            if (g_settings_schema_has_key (sch, "font-rgba-order"))
+                g_settings_set_string (d->iface_s, "font-rgba-order", "rgb");
+            g_settings_schema_unref (sch);
+        }
     }
 
     mark_cards (d, theme_is_light (d));

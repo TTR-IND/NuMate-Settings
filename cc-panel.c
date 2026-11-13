@@ -2,7 +2,7 @@
 /*
  * cc-panel.c — settings panel registry
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 NuMate desktop contributors
  *
  * This program is free software; you can redistribute it and/or modify
@@ -30,32 +30,30 @@ static const struct {
     gint order;
     CcPanelCreateFunc create;
 } BUILTIN_PANELS[] = {
-    { "background",  "Background",   "Desktop wallpaper",
-      "preferences-desktop-wallpaper",            NULL, "Appearance", 10, cc_background_panel_new },
-    { "themes",      "Interface",    "Light or dark appearance, icons, cursors and fonts",
-      "preferences-desktop-theme",                NULL, "Appearance", 15, cc_themes_panel_new },
+    { "themes",      "Background & Interface", "Wallpaper, appearance, icons, cursors and fonts",
+      "preferences-desktop-wallpaper-symbolic",   NULL, "Appearance", 10, cc_themes_panel_new },
     { "screensaver", "Screen Lock",  "Screen lock and idle timeout",
-      "preferences-desktop-screensaver",          NULL, "Appearance", 20, cc_screensaver_panel_new },
+      "preferences-desktop-screensaver-symbolic", NULL, "Appearance", 20, cc_screensaver_panel_new },
 
-    { "display",     "Display",      "Resolution, refresh rate and scale",
-      "preferences-desktop-display",              NULL, "Hardware",   10, cc_display_panel_new },
+    { "display",     "Display & Graphics", "Resolution, refresh rate, scale and per-app GPU",
+      "preferences-desktop-display-symbolic",     NULL, "Hardware",   10, cc_display_panel_new },
     { "sound",       "Sound",        "Volume, devices and effects",
-      "audio-card",                               NULL, "Hardware",   20, cc_sound_panel_new },
+      "audio-card-symbolic",                      NULL, "Hardware",   20, cc_sound_panel_new },
     { "keyboard",    "Keyboard",     "Repeat rate and accessibility",
-      "preferences-desktop-keyboard",             NULL, "Hardware",   30, cc_keyboard_panel_new },
-    { "mouse",       "Mouse",        "Pointer speed, buttons and touchpad",
-      "input-mouse",                              NULL, "Hardware",   40, cc_mouse_panel_new },
+      "preferences-desktop-keyboard-symbolic",    NULL, "Hardware",   30, cc_keyboard_panel_new },
+    { "mouse",       "Mouse & Trackpad", "Pointer speed, buttons and touchpad",
+      "input-mouse-symbolic",                     NULL, "Hardware",   40, cc_mouse_panel_new },
     { "power",       "Power",        "Sleep, lid and button behaviour",
-      "gnome-power-manager",                      NULL, "Hardware",   50, cc_power_panel_new },
+      "gnome-power-manager-symbolic",             NULL, "Hardware",   50, cc_power_panel_new },
 
     { "datetime",    "Date & Time",  "Clock, timezone and NTP",
-      "preferences-system-time",                  NULL, "System",     10, cc_datetime_panel_new },
+      "preferences-system-time-symbolic",         NULL, "System",     10, cc_datetime_panel_new },
     { "users",       "Users",        "Account name and password",
-      "system-users",                             NULL, "System",     20, cc_users_panel_new },
+      "system-users-symbolic",                    NULL, "System",     20, cc_users_panel_new },
     { "defaultapps", "Default Apps", "Browser, mail client and media apps",
-      "preferences-desktop-default-applications", NULL, "System",     30, cc_defaultapps_panel_new },
+      "applications-system-symbolic",             NULL, "System",     30, cc_defaultapps_panel_new },
     { "network",     "Network",      "Connections, Wi-Fi and proxy",
-      "preferences-system-network",               NULL, "System",     40, cc_network_panel_new },
+      "preferences-system-network-symbolic",      NULL, "System",     40, cc_network_panel_new },
 };
 
 void

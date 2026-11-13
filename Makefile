@@ -1,6 +1,6 @@
 # NuMate Settings — build
 #
-# Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+# Copyright (C) 2026 Josh Wheatstone TechnyxLabs
 # SPDX-License-Identifier: AGPL-3.0-or-later OR GPL-2.0-or-later
 #
 # The binary this builds is distributed under GPL-2.0-only, because it
@@ -8,7 +8,7 @@
 # THIRD-PARTY.md.
 
 PACKAGE         := numate-settings
-VERSION         := 1.0.0
+VERSION         := 1.1.0
 GETTEXT_PACKAGE := $(PACKAGE)
 
 prefix  ?= /usr

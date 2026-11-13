@@ -2,7 +2,7 @@
 /*
  * cc-window.c — main settings window
  *
- * Copyright (C) 2026 Josh A. Wheatstone - Torfaen Technology Research IND.
+ * Copyright (C) 2026 Josh Wheatstone TechnyxLabs
  * Copyright (C) 2025 NuMate desktop contributors
  *
  * This program is free software; you can redistribute it and/or modify
@@ -21,7 +21,7 @@
  * capplets are embedded through XEmbed via GtkSocket.
  *
  * ---------------------------------------------------------------------
- * MODIFICATIONS (2026), made for J. A. Wheatstone, Torfaen Technology
+ * MODIFICATIONS (2026), made for Josh Wheatstone, TechnyxLabs
  * Research IND. Upstream authorship above is unchanged; these are edits
  * to that work, recorded here so the delta survives outside version
  * control:
@@ -41,8 +41,8 @@
 #include "cc-panel.h"
 #include "cc-window.h"
 
-#define SIDEBAR_WIDTH   200
-#define SIDEBAR_POSITION 220
+#define SIDEBAR_WIDTH    240
+#define SIDEBAR_POSITION 260
 
 /* An embedded external capplet: its stack page and the process drawing
  * into it. One record per panel id, so teardown never has to keep two
@@ -81,22 +81,81 @@ external_panel_free (ExternalPanel *ep)
 /*  Sidebar rows                                                        */
 /* ------------------------------------------------------------------ */
 
+static GtkIconTheme *
+adwaita_theme (void)
+{
+    static GtkIconTheme *theme = NULL;
+    if (!theme) {
+        theme = gtk_icon_theme_new ();
+        gtk_icon_theme_set_custom_theme (theme, "Adwaita");
+    }
+    return theme;
+}
+
+static void
+update_sidebar_icon (GtkWidget *row, const gchar *icon_name)
+{
+    GtkWidget *image = g_object_get_data (G_OBJECT (row), "sidebar-icon");
+    if (!image || !icon_name) return;
+
+    GtkStyleContext *ctx = gtk_widget_get_style_context (row);
+    GdkRGBA fg;
+    gtk_style_context_get_color (ctx, gtk_style_context_get_state (ctx), &fg);
+    /* Force a light foreground so every sidebar icon is white/monochrome
+     * against the dark sidebar, regardless of theme accent colors. */
+    if (fg.alpha < 0.1 || (fg.red + fg.green + fg.blue) < 1.5) {
+        fg.red = fg.green = fg.blue = 0.91;
+        fg.alpha = 1.0;
+    }
+
+    gboolean was_symbolic = FALSE;
+    GtkIconInfo *info = gtk_icon_theme_lookup_icon (
+        adwaita_theme (), icon_name, 22, GTK_ICON_LOOKUP_FORCE_SYMBOLIC);
+    if (!info) {
+        /* Strip -symbolic and try again. */
+        g_autofree gchar *plain = g_str_has_suffix (icon_name, "-symbolic")
+            ? g_strndup (icon_name, strlen (icon_name) - 9)
+            : g_strdup (icon_name);
+        info = gtk_icon_theme_lookup_icon (adwaita_theme (), plain, 22, 0);
+    }
+    GdkPixbuf *pb = NULL;
+    if (info) {
+        pb = gtk_icon_info_load_symbolic (info, &fg, NULL, NULL, NULL,
+                                          &was_symbolic, NULL);
+        g_object_unref (info);
+    }
+
+    if (pb) {
+        gtk_image_set_from_pixbuf (GTK_IMAGE (image), pb);
+        g_object_unref (pb);
+    }
+}
+
+static void
+on_row_style_updated (GtkWidget *row, gpointer user_data)
+{
+    const gchar *icon_name = g_object_get_data (G_OBJECT (row), "icon-name");
+    update_sidebar_icon (row, icon_name);
+}
+
 static GtkWidget *
 make_panel_row (CcPanel *panel)
 {
     GtkWidget *row = gtk_list_box_row_new ();
     g_object_set_data_full (G_OBJECT (row), "panel-id", g_strdup (panel->id), g_free);
 
-    GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 10);
-    gtk_widget_set_margin_start  (box, 8);
-    gtk_widget_set_margin_end    (box, 8);
-    gtk_widget_set_margin_top    (box, 7);
-    gtk_widget_set_margin_bottom (box, 7);
+    const gchar *icon_name = panel->icon_name ? panel->icon_name : "preferences-system-symbolic";
+    g_object_set_data_full (G_OBJECT (row), "icon-name", g_strdup (icon_name), g_free);
 
-    GtkWidget *icon = gtk_image_new_from_icon_name (
-        panel->icon_name ? panel->icon_name : "preferences-system", GTK_ICON_SIZE_MENU);
-    gtk_image_set_pixel_size (GTK_IMAGE (icon), 22);
+    GtkWidget *box = gtk_box_new (GTK_ORIENTATION_HORIZONTAL, 12);
+    gtk_widget_set_margin_start  (box, 14);
+    gtk_widget_set_margin_end    (box, 14);
+    gtk_widget_set_margin_top    (box, 5);
+    gtk_widget_set_margin_bottom (box, 5);
+
+    GtkWidget *icon = gtk_image_new ();
     gtk_widget_set_valign (icon, GTK_ALIGN_CENTER);
+    g_object_set_data (G_OBJECT (row), "sidebar-icon", icon);
 
     GtkWidget *label = gtk_label_new (panel->name);
     gtk_label_set_ellipsize (GTK_LABEL (label), PANGO_ELLIPSIZE_END);
@@ -107,6 +166,10 @@ make_panel_row (CcPanel *panel)
     gtk_box_pack_start (GTK_BOX (box), icon,  FALSE, FALSE, 0);
     gtk_box_pack_start (GTK_BOX (box), label, TRUE,  TRUE,  0);
     gtk_container_add (GTK_CONTAINER (row), box);
+
+    g_signal_connect (row, "style-updated", G_CALLBACK (on_row_style_updated), NULL);
+    update_sidebar_icon (row, icon_name);
+
     gtk_widget_show_all (row);
     return row;
 }
@@ -352,7 +415,7 @@ cc_window_init (CcWindow *self)
     self->external = g_hash_table_new_full (g_str_hash, g_str_equal, g_free,
                                             (GDestroyNotify) external_panel_free);
 
-    gtk_window_set_default_size (GTK_WINDOW (self), 960, 620);
+    gtk_window_set_default_size (GTK_WINDOW (self), 1080, 680);
     gtk_window_set_title        (GTK_WINDOW (self), "NuMate Settings");
     gtk_window_set_icon_name    (GTK_WINDOW (self), "preferences-system");
 
@@ -377,20 +440,43 @@ cc_window_init (CcWindow *self)
     gtk_style_context_add_class (gtk_widget_get_style_context (self->sidebar), "sidebar");
     g_signal_connect (self->sidebar, "row-activated", G_CALLBACK (on_row_activated), self);
     gtk_container_add (GTK_CONTAINER (self->sidebar_scroll), self->sidebar);
-    gtk_paned_add1 (GTK_PANED (self->paned), self->sidebar_scroll);
+
+    /* Sidebar column: title + search + list */
+    GtkWidget *sidebar_box = gtk_box_new (GTK_ORIENTATION_VERTICAL, 0);
+    gtk_style_context_add_class (gtk_widget_get_style_context (sidebar_box), "sidebar-column");
+
+    GtkWidget *sidebar_title = gtk_label_new ("Settings");
+    gtk_style_context_add_class (gtk_widget_get_style_context (sidebar_title), "sidebar-title");
+    gtk_widget_set_halign (sidebar_title, GTK_ALIGN_START);
+    gtk_widget_set_margin_start (sidebar_title, 16);
+    gtk_widget_set_margin_top (sidebar_title, 16);
+    gtk_widget_set_margin_bottom (sidebar_title, 8);
+    gtk_box_pack_start (GTK_BOX (sidebar_box), sidebar_title, FALSE, FALSE, 0);
+
+    GtkWidget *search = gtk_search_entry_new ();
+    gtk_entry_set_placeholder_text (GTK_ENTRY (search), "Search settings");
+    gtk_style_context_add_class (gtk_widget_get_style_context (search), "search-bar");
+    gtk_widget_set_margin_start  (search, 12);
+    gtk_widget_set_margin_end    (search, 12);
+    gtk_widget_set_margin_bottom (search, 8);
+    gtk_box_pack_start (GTK_BOX (sidebar_box), search, FALSE, FALSE, 0);
+
+    gtk_box_pack_start (GTK_BOX (sidebar_box), self->sidebar_scroll, TRUE, TRUE, 0);
+
+    gtk_paned_add1 (GTK_PANED (self->paned), sidebar_box);
 
     self->stack = gtk_stack_new ();
     gtk_stack_set_transition_type     (GTK_STACK (self->stack),
                                        GTK_STACK_TRANSITION_TYPE_CROSSFADE);
-    gtk_stack_set_transition_duration (GTK_STACK (self->stack), 120);
+    gtk_stack_set_transition_duration (GTK_STACK (self->stack), 150);
 
-    self->placeholder = gtk_box_new (GTK_ORIENTATION_VERTICAL, 10);
+    self->placeholder = gtk_box_new (GTK_ORIENTATION_VERTICAL, 12);
     gtk_widget_set_valign (self->placeholder, GTK_ALIGN_CENTER);
     gtk_widget_set_halign (self->placeholder, GTK_ALIGN_CENTER);
 
     GtkWidget *ph_icon = gtk_image_new_from_icon_name ("preferences-system",
                                                        GTK_ICON_SIZE_DIALOG);
-    gtk_image_set_pixel_size (GTK_IMAGE (ph_icon), 72);
+    gtk_image_set_pixel_size (GTK_IMAGE (ph_icon), 64);
     GtkWidget *ph_label = gtk_label_new ("Select a setting from the list");
     gtk_style_context_add_class (gtk_widget_get_style_context (ph_icon),  "dim-label");
     gtk_style_context_add_class (gtk_widget_get_style_context (ph_label), "dim-label");
@@ -398,6 +484,7 @@ cc_window_init (CcWindow *self)
     gtk_box_pack_start (GTK_BOX (self->placeholder), ph_icon,  FALSE, FALSE, 0);
     gtk_box_pack_start (GTK_BOX (self->placeholder), ph_label, FALSE, FALSE, 0);
     gtk_stack_add_named (GTK_STACK (self->stack), self->placeholder, "placeholder");
+
     gtk_paned_add2 (GTK_PANED (self->paned), self->stack);
 
     self->panels = cc_panels_discover ();

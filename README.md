@@ -2,6 +2,16 @@
 
 A single, unified settings application for the [NuMATE](https://github.com/TTR-IND/NuMATE) desktop.
 
+**ChromeOS-inspired redesign (2026):** The shell and stylesheet have been updated for a cleaner, more seamless experience matching the visual language of ChromeOS Settings. Key changes:
+
+- Dark surface palette with card-like sections
+- Rounded sidebar selection highlights
+- Persistent search bar in the main content area
+- Improved spacing, typography, and control alignment
+- New `cc_section_card()` helper for grouping settings into elevated cards
+
+The architecture (one binary, lazy-loaded panels in a GtkStack, GSettings backends) remains unchanged. Panels can gradually adopt the card helper for full visual consistency.
+
 NuMate Settings replaces the MATE Control Center. The old control center was not really an application — it was a launcher grid that shelled out to a dozen separate capplet binaries (`mate-appearance-properties`, `mate-display-properties`, `mate-keyboard-properties`, `mate-screensaver-preferences`, and the rest), each its own process, each with its own window, its own toolkit conventions, and its own idea of what a settings page should look like. Changing your wallpaper and then your mouse speed meant two programs, two windows, and two visual languages.
 
 This is one binary, one window, one sidebar. Twelve panels live in a `GtkStack` and are built on demand the first time you open them.
@@ -105,7 +115,7 @@ Shared measurements have exactly one definition. Page margins and grid spacing l
 
 ## Licence
 
-© 2026 Josh A. Wheatstone — Torfaen Technology Research IND.
+© 2026 Josh Wheatstone TechnyxLabs
 
 **GNU General Public License, version 2 — see [LICENSE](LICENSE).**
 

@@ -1,6 +1,6 @@
 # Third-Party Code and Attribution
 
-© 2026 Josh A. Wheatstone — Torfaen Technology Research IND.
+© 2026 Josh Wheatstone TechnyxLabs
 
 NuMate Settings incorporates code derived from several free software projects. Every source file retains its original copyright and licence header; nothing has been stripped. This document collects those notices in one place.
 
